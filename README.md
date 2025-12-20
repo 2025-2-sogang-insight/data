@@ -43,6 +43,10 @@ data/
 │   │   └── outputs/        # 결과 저장소
 │   └── namuwiki/           # 나무위키 크롤러 관련 디렉토리
 │       └── outputs/        # 결과 저장소
+├── preprocessed/           # 데이터 전처리 관련 디렉토리
+│   └── opgg/
+│       ├── opgg_preprocessed_crawler.py # 전처리 스크립트
+│       └── outputs/        # 전처리 결과 저장소 (preprocessed_opgg_tips.json)
 ├── README.md               # 프로젝트 안내 문서
 └── venv/                   # 가상환경
 ```
@@ -100,7 +104,26 @@ OPGG의 팁 게시판에서 게시글의 상세 내용(본문)과 댓글 목록�
 
 ---
 
-## 4. 참고 사항 (Notes)
+## 4. 데이터 전처리 가이드 (Data Preprocessing)
+
+### 4-1. OPGG 데이터 정제 및 중복 제거
+수집된 OPGG 데이터를 정제하고 중복 항목을 제거하여 분석에 적합한 형태로 변환합니다.
+
+- **기능**:
+  - `crawler/opgg/outputs/opgg_tips.json` 데이터를 로드
+  - **텍스트 정제**: 본문 및 댓글의 불필요한 공백, 줄바꿈 제거
+  - **중복 제거**: 고유 URL 및 (제목 + 본문) 조합 기반 중복 항목 필터링
+- **실행 명령**:
+  ```bash
+  python preprocessed/opgg/opgg_preprocessed_crawler.py
+  ```
+- **결과 확인**:
+  - 파일 위치: `preprocessed/opgg/outputs/preprocessed_opgg_tips.json`
+
+
+---
+
+## 5. 참고 사항 (Notes)
 - **봇 탐지 우회**: Playwright를 사용하며 User-Agent 설정 및 랜덤 대기 시간(`random.sleep`)이 적용되어 있습니다.
 - **데이터 필터링**: OPGG 크롤러는 내용이 없는 빈 댓글이나 시스템 버튼 텍스트를 자동으로 제외하고 저장합니다.
 - **수정 문의**: 크롤러 로직 수정이 필요한 경우 `crawler/opgg/opgg_crawler.py` 파일을 참고하세요.
