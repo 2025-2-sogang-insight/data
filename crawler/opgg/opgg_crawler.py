@@ -118,12 +118,42 @@ def parse_post_details(fetcher, url):
             nick_elem = page.query_selector(".article-meta__author .nickname")
             if not nick_elem:
                  nick_elem = page.query_selector(".user-name")
+            
             if nick_elem:
                 data["nickname"] = nick_elem.inner_text().strip()
+                
+                # Attempt to find absolute date from tooltip
+                # The date wrapper is the previous sibling
+                try:
+                    date_wrapper_handle = nick_elem.evaluate_handle("el => el.previousElementSibling")
+                    
+                    # Hover to trigger tooltip
+                    date_wrapper_handle.hover()
+                    time.sleep(0.5)  # Wait for tooltip to appear
+                    
+                    # Look for react-tooltip-lite
+                    tooltip = page.query_selector(".react-tooltip-lite")
+                    if tooltip:
+                        absolute_date = tooltip.inner_text().strip()
+                        if absolute_date and '202' in absolute_date:  # Sanity check for year
+                            data["date"] = absolute_date
+                        else:
+                            # Fallback to relative date
+                            relative_date = date_wrapper_handle.evaluate("el => el.innerText")
+                            data["date"] = relative_date.strip() if relative_date else None
+                    else:
+                        # No tooltip found, use relative date
+                        relative_date = date_wrapper_handle.evaluate("el => el.innerText")
+                        data["date"] = relative_date.strip() if relative_date else None
+                except Exception as e:
+                    print(f"Error extracting date with tooltip: {e}")
+                    pass
             
-            date_elem = page.query_selector(".article-meta__item--date")
-            if date_elem:
-                data["date"] = date_elem.get_attribute("title") or date_elem.inner_text().strip()
+            # Fallback/Old selector
+            if not data["date"]:
+                date_elem = page.query_selector(".article-meta__item--date")
+                if date_elem:
+                    data["date"] = date_elem.get_attribute("title") or date_elem.inner_text().strip()
         except:
             pass
         
@@ -139,6 +169,17 @@ def parse_post_details(fetcher, url):
 
         # Comments
         try:
+            # Scroll down multiple times to ensure comments section loads
+            for _ in range(3):
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                time.sleep(1)
+            
+            # Wait longer for comment container to appear
+            try:
+                page.wait_for_selector(".comment-contents", timeout=10000)
+            except:
+                pass  # Comments may not exist for all posts
+            
             # Load all comments if "Load More" button exists
             while True:
                 # Use text matching for button
@@ -154,8 +195,8 @@ def parse_post_details(fetcher, url):
                     break
 
             # Extract comments
-            # Container: div with class containing comment-contents
-            comments_div = page.query_selector("div[class*='comment-contents']")
+            comments_div = page.query_selector(".comment-contents")
+            
             if comments_div:
                 comment_items = comments_div.query_selector_all("li")
                 
@@ -163,49 +204,27 @@ def parse_post_details(fetcher, url):
                 for item in comment_items:
                     c_data = {"nickname": None, "content": None, "date": None}
                     try:
-                        # Parsing based on observation or common classes
-                        # Nickname often in .nickname or just first distinct element
-                        c_nick = item.query_selector(".nickname")
-                        if not c_nick: c_nick = item.query_selector("strong") # sometimes nickname is bold
-                        if not c_nick: c_nick = item.query_selector(".author-name")
+                        # Nickname: .user-name > a > span > b
+                        user_name_span = item.query_selector(".user-name")
+                        if user_name_span:
+                            nick_b = user_name_span.query_selector("b")
+                            if nick_b:
+                                c_data["nickname"] = nick_b.inner_text().strip()
                         
-                        if c_nick: c_data["nickname"] = c_nick.inner_text().strip()
+                        # Content: p tag
+                        c_content = item.query_selector("p")
+                        if c_content:
+                            c_data["content"] = c_content.inner_text().strip()
                         
-                        # Content
-                        c_content = item.query_selector(".comment-content")
-                        if not c_content: c_content = item.query_selector("p")
-                        # Fallback: if p contains class 'date' or 'nickname', skip?
-                        # Better: use text analysis if class fails
+                        # Date: sibling span after .user-name (relative time)
+                        if user_name_span:
+                            try:
+                                date_text = user_name_span.evaluate("el => el.nextElementSibling ? el.nextElementSibling.innerText : ''")
+                                if date_text:
+                                    c_data["date"] = date_text.strip()
+                            except:
+                                pass
                         
-                        if c_content: c_data["content"] = c_content.inner_text().strip()
-                        
-                        # Date
-                        c_date = item.query_selector(".date")
-                        if not c_date: c_date = item.query_selector("time")
-                        if not c_date: 
-                            # Try to find text looking like date "6년 전", "1시간 전"
-                            pass # placeholder
-                            
-                        if c_date: c_data["date"] = c_date.get_attribute("title") or c_date.inner_text().strip()
-                        
-                        # Fallback for when selectors fail but text is present (e.g. text scrape)
-                        if not c_data["nickname"] or not c_data["content"]:
-                            text_lines = item.inner_text().split('\n')
-                            clean_lines = [l.strip() for l in text_lines if l.strip()]
-                            # Structure: [Vote, Nickname, Date, Content...]
-                            # Heuristic: skip digits line (vote)
-                            if clean_lines:
-                                idx = 0
-                                if clean_lines[0].isdigit(): idx += 1
-                                if idx < len(clean_lines): 
-                                    if not c_data["nickname"]: c_data["nickname"] = clean_lines[idx]
-                                    idx += 1
-                                if idx < len(clean_lines):
-                                    if not c_data["date"]: c_data["date"] = clean_lines[idx] # Date usually follows nick
-                                    idx += 1
-                                if idx < len(clean_lines):
-                                    if not c_data["content"]: c_data["content"] = "\n".join(clean_lines[idx:])
-
                         # Filtering: Exclude system buttons/labels and empty content
                         invalid_nicknames = ["신고", "답글 쓰기"]
                         if (c_data["nickname"] and c_data["nickname"] not in invalid_nicknames) and c_data["content"]:
