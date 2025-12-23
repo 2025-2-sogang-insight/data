@@ -1,129 +1,231 @@
-# LOL 데이터 수집 프로젝트 (Data Collection Project)
+# LOL-Coach DATA README
 
-본 프로젝트는 OPGG 커뮤니티(Talk Tip)와 나무위키(Namuwiki)에서 LOL 관련 데이터를 수집하기 위한 크롤러 모음입니다. 협업 개발자를 위해 환경 설정부터 실행 방법까지 안내합니다.
+OP.GG 커뮤니티와 나무위키에서 롤 관련 데이터를 수집하기 위한 크롤러 모음
 
-## 1. 개발 환경 설정 (Setup)
+<br>
 
-이 프로젝트는 **Python 3.x** 환경에서 동작하며, `playwright` 라이브러리를 사용하여 동적 웹 페이지를 크롤링합니다.
+## ⚙️ 개발 환경 설정 (Setup)
 
-### 1-1. 가상환경 설정 (Virtual Environment)
-프로젝트 루트(`data/`)에서 가상환경을 생성하고 활성화합니다.
+### <mark>🎯 필수 환경 (Prerequisites)</mark>
 
+**기반 시스템**
+- **Python 3.9+**: 최신 파이썬 런타임 필요함
+- **Playwright**: 동적 웹 수집을 위한 브라우저 자동화 도구
+
+<br/>
+
+### <mark>🚀 설치 및 실행 (Quick Start)</mark>
+
+<details>
+<summary><strong>1. 환경 구성 (Installation)</strong></summary>
+
+- **가상환경**: `venv`로 독립된 실행 환경 구성함
+- **의존성 설치**: `requirements.txt` 내 필수 라이브러리 일괄 설치함
 ```bash
-# 가상환경 생성 (최초 1회)
+# 초기 세팅 명령어
 python -m venv venv
-
-# 가상환경 활성화 (Mac/Linux)
-source venv/bin/activate
-
-# 가상환경 활성화 (Windows)
 venv\Scripts\activate
-```
-
-### 1-2. 라이브러리 설치 (Dependencies)
-필요한 패키지를 설치합니다.
-
-```bash
-# 필수 패키지 설치
-pip install playwright pandas
-
-# Playwright용 브라우저 설치 (필수)
+pip install -r requirements.txt
 playwright install chromium
 ```
+</details>
 
----
+<details>
+<summary><strong>2. 크롤러 구동 (Installation)</strong></summary>
 
-## 2. 프로젝트 구조 (Directory Structure)
+```bash
+# 나무위키 수집 (Seed: 롤)
+python crawler/namuwiki/namuwiki_crawler.py --seed "리그 오브 레전드" --limit 50
 
+# OPGG 팁 수집
+python crawler/opgg/opgg_crawler.py --limit 100
+```
+
+</details>
+<br>
+
+## 📂 프로젝트 구조 (Project Structure)
+
+
+### <mark>💾 디렉토리 구성</mark>
+<details>
+  <summary><strong>디렉토리 구조</strong></summary>
+  
 ```
 data/
-├── crawler/
-│   ├── opgg/               # OPGG 크롤러 관련 디렉토리
-│   │   ├── opgg_crawler.py # 실행 스크립트
-│   │   └── outputs/        # 결과 저장소
-│   └── namuwiki/           # 나무위키 크롤러 관련 디렉토리
-│       └── outputs/        # 결과 저장소
-├── preprocessed/           # 데이터 전처리 관련 디렉토리
-│   └── opgg/
-│       ├── opgg_preprocessed_crawler.py # 전처리 스크립트
-│       └── outputs/        # 전처리 결과 저장소 (preprocessed_opgg_tips.json)
-├── README.md               # 프로젝트 안내 문서
-└── venv/                   # 가상환경
+├── crawler/                # 데이터 수집 (Crawling)
+│   ├── namuwiki/           # [Source 1] 나무위키 크롤러
+│   │   ├── namuwiki_crawler.py
+│   │   └── outputs/        # 결과 JSON
+│   └── opgg/               # [Source 2] OPGG 팁 크롤러
+│       ├── opgg_crawler.py
+│       └── outputs/        # 결과 JSON
+├── preprocessed/           # 데이터 전처리 (Preprocessing)
+│   └── opgg/               # 텍스트 정제 및 중복 제거
+└── chromadb/               # Vector DB 저장소
 ```
-
----
-
-## 3. 크롤러 실행 가이드 (How to Run)
-
-### 3-1. OPGG 톡 팁 게시판 크롤러
-OPGG의 팁 게시판에서 게시글의 상세 내용(본문)과 댓글 목록을 수집합니다.
-
-- **기능**:
-  - 게시글 제목, 작성자, 날짜 수집
-  - **본문 내용** 전체 추출
-  - **댓글 전체** ('더보기' 자동 로드) 수집 (단, '신고', '답글 쓰기' 등 불필요 텍스트 자동 필터링)
-- **실행 명령**:
-  ```bash
-  # 기본 실행 (20개 포스트, 헤드리스 모드)
-  python crawler/opgg/opgg_crawler.py
-
-  # 50개 포스트 수집
-  python crawler/opgg/opgg_crawler.py --limit 50
-
-  # 브라우저 UI 보면서 실행 (디버깅용)
-  python crawler/opgg/opgg_crawler.py --no-headless
-  ```
-- **옵션 (Options)**:
-  - `--limit [숫자]`: 수집할 게시글 최대 개수 (기본값: 20)
-  - `--no-headless`: 브라우저 창을 띄워서 실행 (기본값: 헤드리스 모드)
-
-- **결과 확인**:
-  - 파일 위치: `crawler/opgg/outputs/opgg_tips.json`
-  - 형식: JSON (UTF-8)
-
-### 3-2. 나무위키 크롤러 (Namuwiki)
-나무위키에서 특정 LOL 관련 문서를 수집합니다.
-
-- **실행 명령**:
-  ```bash
-  # 기본 실행 (특정 키워드 수집)
-  python crawler/namuwiki/namuwiki_crawler.py --keyword "리그 오브 레전드"
-
-  # 옵션 지정 실행
-  python crawler/namuwiki/namuwiki_crawler.py --keyword "페이커" --limit 10 --no-headless
-  ```
-- **옵션 (Options)**:
-  - `--keyword [검색어]`: 수집할 문서의 주제/키워드 (예: "리그 오브 레전드")
-  - `--limit [숫자]`: 수집할 문서 최대 개수
-  - `--no-headless`: 브라우저 창을 띄워서 실행
-- **결과 확인**:
-  - **전체 데이터**: `crawler/namuwiki/outputs/namuwiki_articles.json` (전체 통합 JSON)
-  - **개별 데이터**: `crawler/namuwiki/outputs/per-article/`
-    - 각 문서별로 개별 JSON 파일이 저장됩니다. (예: `기인.json`, `T1.json` 등)
+  
+</details>
 
 
----
 
-## 4. 데이터 전처리 가이드 (Data Preprocessing)
+</details>
 
-### 4-1. OPGG 데이터 정제 및 중복 제거
-수집된 OPGG 데이터를 정제하고 중복 항목을 제거하여 분석에 적합한 형태로 변환합니다.
+<br>
 
-- **기능**:
-  - `crawler/opgg/outputs/opgg_tips.json` 데이터를 로드
-  - **텍스트 정제**: 본문 및 댓글의 불필요한 공백, 줄바꿈 제거
-  - **중복 제거**: 고유 URL 및 (제목 + 본문) 조합 기반 중복 항목 필터링
-- **실행 명령**:
-  ```bash
-  python preprocessed/opgg/opgg_preprocessed_crawler.py
-  ```
-- **결과 확인**:
-  - 파일 위치: `preprocessed/opgg/outputs/preprocessed_opgg_tips.json`
+## 🚀 데이터 파이프라인 (Pipeline)
+
+### <mark>🕷️ 데이터 수집 (Crawling)</mark>
+
+<details>
+<summary><strong>1. 나무위키 </strong></summary>
+
+- **시드 확장**: `BeautifulSoup`으로 문서 내 분류 표를 파싱해 하위 문서(챔피언, 아이템) 링크를 자동 추출함
+- **구조화 수집**: 제목, 본문, 썸네일 등을 수집하고 섹션(Heading) 단위로 내용을 구조화하여 데이터베이스에 저장함
+- **동적 처리**: `Playwright`를 통해 JavaScript 렌더링이 완료된 완전한 HTML을 확보함
+</details>
+
+<details>
+<summary><strong>2. OP.GG </strong></summary>
+
+- **페이지 순회**: `Playwright` 브라우저로 게시판 목록을 순차적으로 탐색하며 상세 게시글 URL을 수집함
+- **동적 로딩**: 스크롤 다운 기능을 제어해 숨겨진 콘텐츠와 댓글을 모두 확보함
+- **데이터 추출**: 게시글과 댓글 정보를 `JSON` 형식으로 구조화하여 추출함
+</details>
 
 
----
+<br>
 
-## 5. 참고 사항 (Notes)
-- **봇 탐지 우회**: Playwright를 사용하며 User-Agent 설정 및 랜덤 대기 시간(`random.sleep`)이 적용되어 있습니다.
-- **데이터 필터링**: OPGG 크롤러는 내용이 없는 빈 댓글이나 시스템 버튼 텍스트를 자동으로 제외하고 저장합니다.
-- **수정 문의**: 크롤러 로직 수정이 필요한 경우 `crawler/opgg/opgg_crawler.py` 파일을 참고하세요.
+### <mark>✨ 데이터 정제 (Preprocessing)</mark>
+
+<details>
+<summary><strong>1. 나무위키 </strong></summary>
+
+- **노이즈 제거**: `RegEx`(정규표현식)를 활용해 본문 각주(`[1]`) 및 메타데이터를 정밀하게 삭제함
+- **중복 방지**: 메모리 상의 `Set` 자료구조로 이미 수집한 문서를 체크해 중복 저장을 차단함
+
+</details>
+
+<details>
+<summary><strong>2. OP.GG </strong></summary>
+
+- **텍스트 정규화**: `Pandas` 등을 이용해 불규칙한 공백과 줄바꿈을 단일 공백으로 통일함
+- **필터링**: 분석에 불필요한 시스템 텍스트('신고' 등)를 조건부 로직으로 제거함
+- **중복 제거**: 문서 내용의 `Hash`(해시값) 비교를 통해 중복된 게시글을 이중으로 걸러냄
+</details>
+
+
+<br>
+
+### <mark>📝 정제 효과 (Before & After)</mark>
+
+<details>
+<summary><strong>Case 1: 위키 각주 제거 </strong></summary>
+
+> **Before**
+> ```text
+> 페이커는 역대 최고의 선수이다.[3] 그의 플레이는... [편집]
+> ```
+> ⬇️
+> **After**
+> ```text
+> 페이커는 역대 최고의 선수이다. 그의 플레이는...
+> ```
+</details>
+
+<details>
+<summary><strong>Case 2: 댓글 공백 정리 </strong></summary>
+
+> **Before**
+> ```text
+> 		ㄹㅇㅋㅋ  
+> (이모티콘)
+> ```
+> ⬇️
+> **After**
+> ```text
+> ㄹㅇㅋㅋ
+> ```
+</details>
+
+<br/>
+
+### <mark>💾 최종 결과물 (Output Examples)</mark>
+
+<details>
+<summary><strong>1. 나무위키 (JSON) </strong></summary>
+
+```json
+{
+  "requested_title": "말파이트",
+  "response_title": "말파이트",
+  "description": "리그 오브 레전드의 챔피언 말파이트 거석의 파편...",
+  "content_text": "리그 오브 레전드의 챔피언 말파이트 거석의 파편...",
+  "sections": [
+    {
+      "heading": "개요",
+      "text": "가능한 한 빨리 가라. (Go as fast as you can.)..."
+    },
+    {
+      "heading": "배경",
+      "text": "조화가 엉망이 된 세상은 거석의 파편이 고칠 것이다..."
+    }
+  ]
+}
+```
+</details>
+
+<details>
+<summary><strong>2. OP.GG (JSON) </strong></summary>
+
+```json
+{
+  "title": "탑 제이스 무라마나 빨간약",
+  "nickname": "5라인중롤제일못하고인성더러운라인은원딜",
+  "date": "2025년 12월 19일 금요일 오후 12:06",
+  "content": "훈련봇 방어력 대충 그 코어 나올때 시점으로 세팅하고...",
+  "comments": []
+},
+{
+  "title": "천상계 빌드 소개-무라마나 안가는 제이스",
+  "content": "이 빌드는 우선 제이스 원챔 챌 김망치 빌드임을 알림...",
+  "comments": [
+    {
+      "nickname": "롤체운빨좋망겜",
+      "content": "와씨 망치햄 전적봐라 천상계 양학하고다니네;",
+      "date": "2일 전"
+    }
+  ]
+}
+```
+</details>
+
+
+
+
+
+</details>
+
+<br>
+
+## 🛠 기술 스택 (Tech Stack)
+
+### <mark>📃 핵심 기술</mark>
+
+<details>
+<summary><strong>수집 (Crawling) </strong></summary>
+
+- **Playwright**: 동적 웹페이지 제어 (Headless Browser)
+- **BeautifulSoup4**: HTML 구조 파싱
+- **Tenacity**: 안정적인 재시도(Retry) 로직
+</details>
+
+<details>
+<summary><strong>가공 (Processing) </strong></summary>
+
+- **Pandas**: 데이터 포맷 변환 및 저장
+- **RegEx**: 텍스트 노이즈 정제
+</details>
+
+
+</details>
