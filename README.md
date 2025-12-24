@@ -60,9 +60,9 @@ data/
 │   └── opgg/               # [Source 2] OPGG 팁 크롤러
 │       ├── opgg_crawler.py
 │       └── outputs/        # 결과 JSON
-├── preprocessed/           # 데이터 전처리 (Preprocessing)
-│   └── opgg/               # 텍스트 정제 및 중복 제거
-└── chromadb/               # Vector DB 저장소
+└── preprocessed/           # 데이터 전처리 (Preprocessing) 결과
+    ├── namuwiki/           
+    └── opgg/               
 ```
   
 </details>
