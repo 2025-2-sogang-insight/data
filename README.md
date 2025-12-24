@@ -217,7 +217,6 @@ data/
 
 - **Playwright**: 동적 웹페이지 제어 (Headless Browser)
 - **BeautifulSoup4**: HTML 구조 파싱
-- **Tenacity**: 안정적인 재시도(Retry) 로직
 </details>
 
 <details>
